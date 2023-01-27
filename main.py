@@ -251,11 +251,15 @@ class Minesweeper(Board):
         if not self.lose_detect and not self.win_detect:
 
             j, i = cell
-
+            square = self.cell_to_square(cell)
+            
             if self.map[i][j] == '.' or self.map[i][j] == '*':
                 self.map[i][j] = 'F'
             elif self.map[i][j] == 'F':
-                self.map[i][j] = '.'
+                if square in self.MINES:
+                    self.map[i][j] = '*'
+                else:
+                    self.map[i][j] = '.'
             GOG = self.check_win()
             if GOG:
                 self.win_detect = True
@@ -493,7 +497,6 @@ def win_screen():
 
         connect.commit()
         cursor.close()
-
 
         while True:
             for event in pygame.event.get():
