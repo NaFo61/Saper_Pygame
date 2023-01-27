@@ -143,6 +143,37 @@ class Board:
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
 
+                    color_button = (141, 182, 255)
+                    color_text = (103, 103, 103)
+
+                    # <======== Вы проиграли! ========>
+                    pygame.draw.rect(screen, color_button, (265, 10, 185, 70))
+
+                    font = pygame.font.Font(None, 35)
+
+                    text = font.render("Вы проиграли!", True, color_text)
+
+                    text_x = 357 - text.get_width() // 2
+                    text_y = 50 - text.get_height() // 2
+
+                    screen.blit(text, (text_x, text_y))
+                    # <======== Вы проиграли! ========>
+
+                    # <======== Рестарт ========>
+                    pygame.draw.rect(screen, color_button, (50, 10, 185, 70))
+
+                    font = pygame.font.Font(None, 35)
+
+                    text = font.render("Рестарт", True, color_text)
+
+                    text_x = 142 - text.get_width() // 2
+                    text_y = 45 - text.get_height() // 2
+
+                    screen.blit(text, (text_x, text_y))
+                    # <======== Рестарт ========>
+
+
+
 
 class Minesweeper(Board):
     def load_image(self, name, color_key=None):
@@ -167,10 +198,11 @@ class Minesweeper(Board):
         max_width = max(map(len, level_map))
         return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
 
-    def __init__(self, screen_size, width, height, count):
+    def __init__(self, screen, screen_size, width, height, count):
         super().__init__(screen_size, width, height, count)
 
         self.map = self.load_level()  # Загружаем карту
+        self.screen = screen
 
         self.lose_detect = False
 
@@ -336,6 +368,7 @@ class Minesweeper(Board):
     def lose(self):
         print('Ты проиграл, ты попал на мину!')
         self.lose_detect = True
+
 
     def win(self):
         print('Ты выйграл!')
@@ -778,7 +811,7 @@ def main():
 
     start_screen(screen, screen_size)
 
-    board = Minesweeper(screen_size, width, height, count)
+    board = Minesweeper(screen, screen_size, width, height, count)
     running = True
     while running:
         for event in pygame.event.get():
