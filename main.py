@@ -131,7 +131,6 @@ class Board:
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
 
-
                     color_button = (141, 182, 255)
                     color_text = (103, 103, 103)
 
@@ -238,7 +237,8 @@ class Minesweeper(Board):
         self.start_time = datetime.datetime.timestamp(self.now)
         self.finish_time = None
         self.points = None
-        self.data = ':'.join(reversed(str(self.now).split()[0].replace('-', ':').split(':')))
+        self.data = ':'.join(
+            reversed(str(self.now).split()[0].replace('-', ':').split(':')))
         self.time = str(self.now).split()[1].split('.')[0]
         # <============ СЧЕТ ============>
 
@@ -294,7 +294,7 @@ class Minesweeper(Board):
 
             j, i = cell
             square = self.cell_to_square(cell)
-            
+
             if self.map[i][j] == '.' or self.map[i][j] == '*':
                 self.map[i][j] = 'F'
             elif self.map[i][j] == 'F':
@@ -378,8 +378,6 @@ class Minesweeper(Board):
         # print('Ты проиграл, ты попал на мину!')
         self.lose_detect = True
 
-
-
     def win(self):
         # print('Ты выйграл!')
         self.now = datetime.datetime.now()
@@ -403,7 +401,8 @@ class Minesweeper(Board):
 
 def win_screen(data, time, points):
     try:
-
+        global first_move
+        first_move = True
         connect = sqlite3.connect('data/database.db')
         cursor = connect.cursor()
 
@@ -708,6 +707,8 @@ def lider_board(screen, screen_size):
 
 def start_screen(screen, screen_size):
     try:
+        global first_move
+        first_move = True
         width, height = screen_size
 
         fon = pygame.transform.scale(load_image('background.png'), screen_size)
@@ -785,17 +786,16 @@ def terminate():
 all_sprites = pygame.sprite.Group()
 
 screen, screen_size = None, None
+first_move = True
 
 
 def main():
-    global screen, screen_size
+    global screen, screen_size, first_move
 
     pygame.init()
 
     width, height, count = width_map, height_map, count_mines
     screen_size = (500, 500)
-
-    first_move = True
 
     map = open('data/map.txt', 'w')
     map.truncate()
@@ -814,7 +814,6 @@ def main():
 
     board = Minesweeper(screen, screen_size, width, height, count)
     running = True
-
 
     while running:
         for event in pygame.event.get():
