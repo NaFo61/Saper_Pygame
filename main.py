@@ -4,7 +4,6 @@ import pygame
 import os
 import datetime
 import sqlite3
-
 from config import *
 
 
@@ -26,18 +25,15 @@ class Bomb(pygame.sprite.Sprite):
     image = pygame.transform.scale(load_image("bomb.jpg", (255, 255, 255)),
                                    (40, 40))
 
-    def __init__(self, x, y, cell_size):
+    def __init__(self, x, y, GOG=True):
         super().__init__(all_sprites)
+        if GOG:
+            self.image = Bomb.image
+            self.rect = self.image.get_rect()
+            self.rect.x, self.rect.y = x, y
 
-        self.x, self.y, self.cell_size = x, y, cell_size
-
-        self.image = Bomb.image
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-
-    def update(self):
-        pass
+    def delete(self):
+        all_sprites.remove(all_sprites)
 
 
 class Board:
@@ -62,10 +58,9 @@ class Board:
         for i in range(len(self.map)):
             for j in range(len(self.map[i])):
                 if not self.lose_detect:
+                    GOG = False
                     if self.map[i][j] != '.' and self.map[i][j] != '*':
-                        into = 0
-                    else:
-                        into = 1
+                        GOG = True
                     if self.map[i][j] == '*':
                         col = 'black'
                     elif self.map[i][j] == '.':
@@ -85,21 +80,13 @@ class Board:
                         self.cell_size - 2),
                                      0)
 
-                    if into == 0:
+                    if GOG:
                         font = pygame.font.Font(None, 53)
                         text = font.render(str(self.map[i][j]), True,
                                            (255, 0, 0))
                         text_x = self.left + j * self.cell_size + 10
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
-                    """
-                    if self.map[i][j] == 'F':
-                        x, y = (
-                            self.left + j * self.cell_size,
-                            self.top + i * self.cell_size)
-                        print('Поставил флаг', x, y)
-                        Flag(x, y, self.cell_size)
-                    """
                 else:
                     square = i * self.width + j
                     if (self.map[i][j] == 'F' and square in self.MINES) or \
@@ -108,7 +95,8 @@ class Board:
                             self.left + j * self.cell_size,
                             self.top + i * self.cell_size)
 
-                        Bomb(x, y, self.cell_size)
+                        bomb = Bomb(x, y)
+                        all_sprites.add(bomb)
 
                         col = 'red'
                     elif self.map[i][j] == '.':
@@ -143,6 +131,7 @@ class Board:
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
 
+
                     color_button = (141, 182, 255)
                     color_text = (103, 103, 103)
 
@@ -173,36 +162,90 @@ class Board:
                     # <======== Рестарт ========>
 
 
+def generate_neighbors(square):
+    """ Возвращает клетки соседствующие с square """
+    if square == 0:
+        data = (1, 11, 10)
+
+    elif square == 9:
+        data = (8, 18, 19)
+
+    elif square == 90:
+        data = (80, 81, 91)
+
+    elif square == 99:
+        data = (89, 88, 98)
+
+    elif square in (1, 2, 3, 4, 5, 6, 7, 8):
+        data = (
+            square - 1, square - 1 + 10, square + 10, square + 1 + 10,
+            square + 1)
+
+    elif square in (91, 92, 93, 94, 95, 96, 97, 98):
+        data = (
+            square - 1, square - 1 - 10, square - 10, square + 1 - 10,
+            square + 1)
+
+    elif square in (10, 20, 30, 40, 50, 60, 70, 80):
+        data = (
+            square - 10, square + 1 - 10, square + 1, square + 1 + 10,
+            square + 10)
+
+    elif square in (19, 29, 39, 49, 59, 69, 79, 89):
+        data = (
+            square - 10, square - 10 - 1, square - 1, square - 1 + 10,
+            square + 10)
+
+    else:
+        data = (
+            square - 1 - 10, square - 10, square + 1 - 10, square + 1,
+            square + 1 + 10, square + 10, square - 1 + 10, square - 1)
+
+    return data
+
+
+def load_image(name, color_key=None):
+    fullname = os.path.join('data', name)
+    try:
+        image = pygame.image.load(fullname)
+    except pygame.error as message:
+        print('Не удаётся загрузить:', name)
+        raise SystemExit(message)
+    image = image.convert_alpha()
+    if color_key is not None:
+        if color_key == -1:
+            color_key = image.get_at((0, 0))
+        image.set_colorkey(color_key)
+    return image
+
+
+def load_level():
+    filename = "data/map.txt"
+    with open(filename, 'r') as mapFile:
+        level_map = [line.strip() for line in mapFile]
+    # print(level_map)
+    max_width = max(map(len, level_map))
+    return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
 
 
 class Minesweeper(Board):
-    def load_image(self, name, color_key=None):
-        fullname = os.path.join('data', name)
-        try:
-            image = pygame.image.load(fullname)
-        except pygame.error as message:
-            print('Не удаётся загрузить:', name)
-            raise SystemExit(message)
-        image = image.convert_alpha()
-        if color_key is not None:
-            if color_key == -1:
-                color_key = image.get_at((0, 0))
-            image.set_colorkey(color_key)
-        return image
-
-    def load_level(self):
-        filename = "data/map.txt"
-        with open(filename, 'r') as mapFile:
-            level_map = [line.strip() for line in mapFile]
-        # print(level_map)
-        max_width = max(map(len, level_map))
-        return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
 
     def __init__(self, screen, screen_size, width, height, count):
         super().__init__(screen_size, width, height, count)
 
-        self.map = self.load_level()  # Загружаем карту
+        # <============ СЧЕТ ============>
+        self.now = datetime.datetime.now()
+        self.start_time = datetime.datetime.timestamp(self.now)
+        self.finish_time = None
+        self.points = None
+        self.data = ':'.join(reversed(str(self.now).split()[0].replace('-', ':').split(':')))
+        self.time = str(self.now).split()[1].split('.')[0]
+        # <============ СЧЕТ ============>
+
+        self.map = load_level()  # Загружаем карту
         self.screen = screen
+
+        self.restart = False
 
         self.lose_detect = False
 
@@ -222,39 +265,6 @@ class Minesweeper(Board):
             self.lst.append(mine)
             # print(f"i-> {i} | j-> {j}")
             self.map[i][j] = '*'
-
-    def generate_neighbors(self, square):
-        """ Возвращает клетки соседствующие с square """
-        if square == 0:
-            data = (1, 11, 10)
-        elif square == 9:
-            data = (8, 18, 19)
-        elif square == 90:
-            data = (80, 81, 91)
-        elif square == 99:
-            data = (89, 88, 98)
-
-        elif square in (1, 2, 3, 4, 5, 6, 7, 8):
-            data = (
-                square - 1, square - 1 + 10, square + 10, square + 1 + 10,
-                square + 1)
-        elif square in (91, 92, 93, 94, 95, 96, 97, 98):
-            data = (
-                square - 1, square - 1 - 10, square - 10, square + 1 - 10,
-                square + 1)
-        elif square in (10, 20, 30, 40, 50, 60, 70, 80):
-            data = (
-                square - 10, square + 1 - 10, square + 1, square + 1 + 10,
-                square + 10)
-        elif square in (19, 29, 39, 49, 59, 69, 79, 89):
-            data = (
-                square - 10, square - 10 - 1, square - 1, square - 1 + 10,
-                square + 10)
-        else:
-            data = (
-                square - 1 - 10, square - 10, square + 1 - 10, square + 1,
-                square + 1 + 10, square + 10, square - 1 + 10, square - 1)
-        return data
 
     def cell_to_square(self, cell):
         i, j = cell
@@ -300,7 +310,6 @@ class Minesweeper(Board):
     def check_win(self):
         cnt = sum([i.count('.') for i in self.map])
         GOG = cnt == 0
-        print(cnt)
         return GOG
 
     def open_cell(self, cell, first_move=False):
@@ -351,7 +360,7 @@ class Minesweeper(Board):
                             self.win()
                     else:
                         self.map[i][j] = ' '
-                        data = self.generate_neighbors(square)
+                        data = generate_neighbors(square)
                         sys.setrecursionlimit(3000)
                         for square in data:
                             cell = (square % self.height, square // self.width)
@@ -363,20 +372,27 @@ class Minesweeper(Board):
                             self.win_detect = True
                             self.win()
             except Exception as e:
-                print(e)
+                pass
 
     def lose(self):
-        print('Ты проиграл, ты попал на мину!')
+        # print('Ты проиграл, ты попал на мину!')
         self.lose_detect = True
 
 
+
     def win(self):
-        print('Ты выйграл!')
+        # print('Ты выйграл!')
+        self.now = datetime.datetime.now()
+        self.finish_time = datetime.datetime.timestamp(self.now)
+        self.points = str(int(self.finish_time - self.start_time))
+
+        # print(f"data-> {self.data} | time-> {self.time} | points-> {self.points}")
+
         self.win_detect = True
-        win_screen()
+        win_screen(self.data, self.time, self.points)
 
     def get_cnt_mines(self, square):
-        data = self.generate_neighbors(square)
+        data = generate_neighbors(square)
         # print(f"info-> {data, self.MINES}")
         cnt = 0
         for i in data:
@@ -385,27 +401,15 @@ class Minesweeper(Board):
         return cnt
 
 
-def load_image(name, color_key=None):
-    fullname = os.path.join('data', name)
-    try:
-        image = pygame.image.load(fullname)
-    except pygame.error as message:
-        print('Не удаётся загрузить:', name)
-        raise SystemExit(message)
-    image = image.convert_alpha()
-    if color_key is not None:
-        if color_key == -1:
-            color_key = image.get_at((0, 0))
-        image.set_colorkey(color_key)
-    return image
-
-
-def win_screen():
+def win_screen(data, time, points):
     try:
 
-        data = '28.01.2023'
-        time = '1:23'
-        points = '54'
+        connect = sqlite3.connect('data/database.db')
+        cursor = connect.cursor()
+
+        data = str(data)
+        time = str(time)
+        points = str(points)
 
         global screen, screen_size
         width, height = screen_size
@@ -521,9 +525,6 @@ def win_screen():
         screen.blit(text, (text_x, text_y))
         # <====== Свое Cчет ======>
 
-        connect = sqlite3.connect('data/database.db')
-        cursor = connect.cursor()
-
         cursor.execute("""
         INSERT INTO board(data, time, points) VALUES(?, ?, ?)
         """, (data, time, points))
@@ -539,11 +540,10 @@ def win_screen():
                     pos = event.pos
                     x, y = pos
                     if 100 < x < 400 and 450 < y < 500:
-                        print('Главное меню')
-                        start_screen(screen, screen_size)
+                        main()
             pygame.display.flip()
     except Exception as e:
-        print(e)
+        pass
 
 
 def lider_board(screen, screen_size):
@@ -700,11 +700,10 @@ def lider_board(screen, screen_size):
                     pos = event.pos
                     x, y = pos
                     if 100 < x < 400 and 450 < y < 500:
-                        print('Главное меню')
                         main()
             pygame.display.flip()
     except Exception as e:
-        print(e)
+        pass
 
 
 def start_screen(screen, screen_size):
@@ -770,10 +769,12 @@ def start_screen(screen, screen_size):
                     if button_x_1 - 100 < x < button_x_1 + 100 and button_y_1 - 25 < y < button_y_1 + 25:
                         return
                     elif button_x_2 - 100 < x < button_x_2 + 100 and button_y_2 - 25 < y < button_y_2 + 25:
+                        bomb = Bomb(None, None, False)
+                        bomb.delete()
                         lider_board(screen, screen_size)
             pygame.display.flip()
     except Exception as e:
-        print(e)
+        pass
 
 
 def terminate():
@@ -813,12 +814,24 @@ def main():
 
     board = Minesweeper(screen, screen_size, width, height, count)
     running = True
+
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
+                    if board.lose_detect:
+                        # 50, 10, 185, 70
+                        x, y = event.pos
+                        if 50 < x < 235 and 10 < y < 80:
+                            start_screen(screen, screen_size)
+                            board = Minesweeper(screen, screen_size, width,
+                                                height, count)
+                            bomb = Bomb(None, None, False)
+                            bomb.delete()
+
                     if first_move:
                         board.get_click(event.pos, first_move,
                                         True)  # True - открыть клетку
