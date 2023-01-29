@@ -82,9 +82,23 @@ class Board:
                                      0)
 
                     if GOG:
+                        cnt = str(self.map[i][j])
+                        if cnt == 'F':
+                            color = (102, 51, 0)
+                        elif cnt == '1':
+                            color = (0, 0, 179)
+                        elif cnt == '2':
+                            color = (0, 179, 60)
+                        elif cnt == '3':
+                            color = (179, 36, 0)
+                        elif cnt == '4':
+                            color = (0, 0, 102)
+                        else:
+                            color = (0,0,0)
+
                         font = pygame.font.Font(None, 53)
                         text = font.render(str(self.map[i][j]), True,
-                                           (255, 0, 0))
+                                           color)
                         text_x = self.left + j * self.cell_size + 10
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
@@ -125,9 +139,22 @@ class Board:
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
                     else:
+                        cnt = str(self.map[i][j])
+                        if cnt == 'F':
+                            color = (102, 51, 0)
+                        elif cnt == '1':
+                            color = (0, 0, 179)
+                        elif cnt == '2':
+                            color = (0, 179, 60)
+                        elif cnt == '3':
+                            color = (179, 36, 0)
+                        elif cnt == '4':
+                            color = (0, 0, 102)
+                        else:
+                            color = (0, 0, 0)
                         font = pygame.font.Font(None, 53)
                         text = font.render(str(self.map[i][j]), True,
-                                           (255, 0, 0))
+                                           color)
                         text_x = self.left + j * self.cell_size + 10
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
