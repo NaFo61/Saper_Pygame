@@ -5,6 +5,7 @@ import os
 import datetime
 import sqlite3
 from config import *
+from style import *
 
 
 # Загрузка изображения
@@ -131,15 +132,12 @@ class Board:
                         text_y = self.top + i * self.cell_size + 5
                         screen.blit(text, (text_x, text_y))
 
-                    color_button = (141, 182, 255)
-                    color_text = (103, 103, 103)
-
                     # <======== Вы проиграли! ========>
-                    pygame.draw.rect(screen, color_button, (265, 10, 185, 70))
+                    pygame.draw.rect(screen, BUTTON, (265, 10, 185, 70))
 
-                    font = pygame.font.Font(None, 35)
+                    font = pygame.font.SysFont("bahnschrift", 25)
 
-                    text = font.render("Вы проиграли!", True, color_text)
+                    text = font.render("Вы проиграли!", True, TITLE)
 
                     text_x = 357 - text.get_width() // 2
                     text_y = 50 - text.get_height() // 2
@@ -148,11 +146,11 @@ class Board:
                     # <======== Вы проиграли! ========>
 
                     # <======== Рестарт ========>
-                    pygame.draw.rect(screen, color_button, (50, 10, 185, 70))
+                    pygame.draw.rect(screen, BUTTON, (50, 10, 185, 70))
 
-                    font = pygame.font.Font(None, 35)
+                    font = pygame.font.SysFont("bahnschrift", 35)
 
-                    text = font.render("Рестарт", True, color_text)
+                    text = font.render("Рестарт", True, TITLE)
 
                     text_x = 142 - text.get_width() // 2
                     text_y = 45 - text.get_height() // 2
@@ -416,14 +414,8 @@ def win_screen(data, time, points):
         fon = pygame.transform.scale(load_image('background.png'), screen_size)
         screen.blit(fon, (0, 0))
 
-        color_text = (141, 182, 255)
-        color_table = (157, 158, 159)
-        color_table_names = (142, 188, 185)
-        color_table_values = (170, 216, 213)
-        color_button_back = (103, 103, 103)
-
-        font = pygame.font.Font(None, 60)
-        text = font.render("Ты выйграл!", True, color_text)
+        font = pygame.font.SysFont("bahnschrift", 50)
+        text = font.render("Ты выйграл!", True, TITLE)
 
         text_x = width // 2 - text.get_width() // 2
         text_y = height // 8 + 20 - text.get_height() // 2
@@ -433,24 +425,24 @@ def win_screen(data, time, points):
         # ============================
 
         # <====== Главная рамка ======>
-        pygame.draw.rect(screen, color_table, (50, 170, 400, 210), 5)
+        pygame.draw.rect(screen, BUTTON, (50, 170, 400, 210), 5)
         # <====== Главная рамка ======>
 
         # <====== 1 Горизонтал. линия ======>
-        pygame.draw.line(screen, color_table, (50, 240), (450, 240), 5)
+        pygame.draw.line(screen, BUTTON, (50, 240), (450, 240), 5)
         # <====== 1 Горизонтал. линия ======>
 
         # <====== 2 Горизонтал. линия ======>
-        pygame.draw.line(screen, color_table, (50, 310), (450, 310), 5)
+        pygame.draw.line(screen, BUTTON, (50, 310), (450, 310), 5)
         # <====== 2 Горизонтал. линия ======>
 
         # <====== 1 Вертикал. линия ======>
-        pygame.draw.line(screen, color_table, (220, 170), (220, 380), 5)
+        pygame.draw.line(screen, BUTTON, (220, 170), (220, 380), 5)
         # <====== 1 Вертикал. линия ======>
 
         # <====== Дата ======>
-        font = pygame.font.Font(None, 60)
-        text = font.render("Дата", True, color_table_names)
+        font = pygame.font.SysFont("bahnschrift", 50)
+        text = font.render("Дата", True, TABLE_NAMES)
 
         text_x = 130 - text.get_width() // 2
         text_y = 210 - text.get_height() // 2
@@ -459,8 +451,8 @@ def win_screen(data, time, points):
         # <====== Дата ======>
 
         # <====== Время ======>
-        font = pygame.font.Font(None, 60)
-        text = font.render("Время", True, color_table_names)
+        font = pygame.font.SysFont("bahnschrift", 45)
+        text = font.render("Время", True, TABLE_NAMES)
 
         text_x = 130 - text.get_width() // 2
         text_y = 280 - text.get_height() // 2
@@ -469,8 +461,8 @@ def win_screen(data, time, points):
         # <====== Время ======>
 
         # <====== Счет ======>
-        font = pygame.font.Font(None, 60)
-        text = font.render("Счет", True, color_table_names)
+        font = pygame.font.SysFont("bahnschrift", 50)
+        text = font.render("Счет", True, TABLE_NAMES)
 
         text_x = 130 - text.get_width() // 2
         text_y = 340 - text.get_height() // 2
@@ -479,11 +471,11 @@ def win_screen(data, time, points):
         # <====== Счет ======>
 
         # <====== Главное меню ======>
-        pygame.draw.rect(screen, color_button_back, (100, 450, 300, 50))
+        pygame.draw.rect(screen, BUTTON, (100, 450, 300, 50))
 
-        font = pygame.font.Font(None, 40)
+        font = pygame.font.SysFont("bahnschrift", 35)
 
-        text = font.render("Главное меню", True, color_text)
+        text = font.render("Главное меню", True, PLAY)
 
         text_x = 250 - text.get_width() // 2
         text_y = 475 - text.get_height() // 2
@@ -492,9 +484,9 @@ def win_screen(data, time, points):
         # <====== Главное меню ======>
 
         # <====== Свое Дата ======>
-        font = pygame.font.Font(None, 40)
+        font = pygame.font.SysFont("bahnschrift", 35)
 
-        text = font.render(data, True, color_table_values)
+        text = font.render(data, True, TABLE_VALUES)
 
         text_x = 335 - text.get_width() // 2
         text_y = 210 - text.get_height() // 2
@@ -503,9 +495,9 @@ def win_screen(data, time, points):
         # <====== Свое Дата ======>
 
         # <====== Свое Время ======>
-        font = pygame.font.Font(None, 40)
+        font = pygame.font.SysFont("bahnschrift", 35)
 
-        text = font.render(time, True, color_table_values)
+        text = font.render(time, True, TABLE_VALUES)
 
         text_x = 335 - text.get_width() // 2
         text_y = 280 - text.get_height() // 2
@@ -514,9 +506,9 @@ def win_screen(data, time, points):
         # <====== Свое Время ======>
 
         # <====== Свое Cчет ======>
-        font = pygame.font.Font(None, 40)
+        font = pygame.font.SysFont("bahnschrift", 35)
 
-        text = font.render(points, True, color_table_values)
+        text = font.render(points, True, TABLE_VALUES)
 
         text_x = 340 - text.get_width() // 2
         text_y = 340 - text.get_height() // 2
@@ -556,18 +548,12 @@ def lider_board(screen, screen_size):
         fon = pygame.transform.scale(load_image('background.png'), screen_size)
         screen.blit(fon, (0, 0))
 
-        color_text = (141, 182, 255)
-        color_table = (157, 158, 159)
-        color_table_names = (142, 188, 185)
-        color_table_values = (170, 216, 213)
-        color_button_back = (103, 103, 103)
-
         # <====== Главное меню ======>
-        pygame.draw.rect(screen, color_button_back, (100, 450, 300, 50))
+        pygame.draw.rect(screen, BUTTON, (100, 450, 300, 50))
 
-        font = pygame.font.Font(None, 40)
+        font = pygame.font.SysFont("bahnschrift", 30)
 
-        text = font.render("Главное меню", True, color_text)
+        text = font.render("Главное меню", True, PLAY)
 
         text_x = 250 - text.get_width() // 2
         text_y = 475 - text.get_height() // 2
@@ -575,10 +561,10 @@ def lider_board(screen, screen_size):
         screen.blit(text, (text_x, text_y))
         # <====== Главное меню ======>
 
-        font = pygame.font.Font(None, 60)
+        font = pygame.font.SysFont("bahnschrift", 50)
         # print(pygame.font.get_fonts())
         # print(pygame.font.match_font('arial'))
-        text = font.render("Таблица Рекордов", True, color_text)
+        text = font.render("Таблица Рекордов", True, TITLE)
 
         text_x = width // 2 - text.get_width() // 2
         text_y = height // 7 - text.get_height() // 2
@@ -588,33 +574,32 @@ def lider_board(screen, screen_size):
         # ============================
 
         # <====== Главная рамка ======>
-        pygame.draw.rect(screen, color_table, (50, 120, 400, 300), 5)
+        pygame.draw.rect(screen, BUTTON, (50, 120, 400, 300), 5)
         # <====== Главная рамка ======>
 
         # <====== 1 Горизонтал. линия ======>
-        pygame.draw.line(screen, color_table, (50, 195), (450, 195), 5)
+        pygame.draw.line(screen, BUTTON, (50, 195), (450, 195), 5)
         # <====== 1 Горизонтал. линия ======>
 
         # <====== 2 Горизонтал. линия ======>
-        pygame.draw.line(screen, color_table, (50, 270), (450, 270), 5)
+        pygame.draw.line(screen, BUTTON, (50, 270), (450, 270), 5)
         # <====== 2 Горизонтал. линия ======>
 
         # <====== 3 Горизонтал. линия ======>
-        pygame.draw.line(screen, color_table, (50, 345), (450, 345), 5)
+        pygame.draw.line(screen, BUTTON, (50, 345), (450, 345), 5)
         # <====== 3 Горизонтал. линия ======>
 
         # <====== 1 Вертикал. линия ======>
-        pygame.draw.line(screen, color_table, (183, 120), (183, 420), 5)
+        pygame.draw.line(screen, BUTTON, (183, 120), (183, 420), 5)
         # <====== 1 Вертикал. линия ======>
 
         # <====== 2 Вертикал. линия ======>
-        pygame.draw.line(screen, color_table, (316, 120), (316, 420), 5)
+        pygame.draw.line(screen, BUTTON, (316, 120), (316, 420), 5)
         # <====== 2 Вертикал. линия ======>
 
         # <====== 1 Горизонтал. линия Дата ======>
-        font = pygame.font.Font(None, 50)
-
-        text = font.render("Дата", True, color_table_names)
+        font = pygame.font.SysFont("bahnschrift", 40)
+        text = font.render("Дата", True, TABLE_NAMES)
 
         text_x = 115 - text.get_width() // 2
         text_y = 160 - text.get_height() // 2
@@ -623,9 +608,9 @@ def lider_board(screen, screen_size):
         # <====== 1 Горизонтал. линия Дата ======>
 
         # <====== 1 Горизонтал. линия Время ======>
-        font = pygame.font.Font(None, 50)
+        font = pygame.font.SysFont("bahnschrift", 40)
 
-        text = font.render("Время", True, color_table_names)
+        text = font.render("Время", True, TABLE_NAMES)
 
         text_x = 250 - text.get_width() // 2
         text_y = 160 - text.get_height() // 2
@@ -634,9 +619,9 @@ def lider_board(screen, screen_size):
         # <====== 1 Горизонтал. линия Время ======>
 
         # <====== 1 Горизонтал. линия Счет ======>
-        font = pygame.font.Font(None, 50)
+        font = pygame.font.SysFont("bahnschrift", 40)
 
-        text = font.render("Счет", True, color_table_names)
+        text = font.render("Счет", True, TABLE_NAMES)
 
         text_x = 385 - text.get_width() // 2
         text_y = 160 - text.get_height() // 2
@@ -656,9 +641,9 @@ def lider_board(screen, screen_size):
             id, data, time, points = result[place]
 
             # <======== Дата ========>
-            font = pygame.font.Font(None, 30)
+            font = pygame.font.SysFont("bahnschrift", 25)
 
-            text = font.render(data, True, color_table_values)
+            text = font.render(data, True, TABLE_VALUES)
 
             text_x = 115 - text.get_width() // 2
             text_y = (235 - text.get_height() // 2) + 75 * place
@@ -667,9 +652,9 @@ def lider_board(screen, screen_size):
             # <======== Дата ========>
 
             # <======== Время ========>
-            font = pygame.font.Font(None, 30)
+            font = pygame.font.SysFont("bahnschrift", 30)
 
-            text = font.render(time, True, color_table_values)
+            text = font.render(time, True, TABLE_VALUES)
 
             text_x = 250 - text.get_width() // 2
             text_y = (235 - text.get_height() // 2) + 75 * place
@@ -678,9 +663,9 @@ def lider_board(screen, screen_size):
             # <======== Время ========>
 
             # <======== Счет ========>
-            font = pygame.font.Font(None, 30)
+            font = pygame.font.SysFont("bahnschrift", 30)
 
-            text = font.render(str(points), True, color_table_values)
+            text = font.render(str(points), True, TABLE_VALUES)
 
             text_x = 380 - text.get_width() // 2
             text_y = (235 - text.get_height() // 2) + 75 * place
@@ -714,12 +699,8 @@ def start_screen(screen, screen_size):
         fon = pygame.transform.scale(load_image('background.png'), screen_size)
         screen.blit(fon, (0, 0))
 
-        color_text = (141, 182, 255)
-        color_button = (157, 158, 159)
-        color_button_text = (103, 103, 103)
-
-        font = pygame.font.Font(None, 60)
-        text = font.render("Сапер", True, color_text)
+        font = pygame.font.SysFont("bahnschrift", 60)
+        text = font.render("Сапер", True, TITLE)
 
         text_x = width // 2 - text.get_width() // 2
         text_y = height // 3 - text.get_height() // 2
@@ -731,12 +712,12 @@ def start_screen(screen, screen_size):
         button_x_1 = width // 2
         button_y_1 = height // 2
 
-        pygame.draw.rect(screen, color_button,
+        pygame.draw.rect(screen, BUTTON,
                          (button_x_1 - 100, button_y_1 - 25,
                           200, 50), 0)
 
-        font = pygame.font.Font(None, 40)
-        text = font.render("Играть!", True, color_button_text)
+        font = pygame.font.SysFont("bahnschrift", 40)
+        text = font.render("Играть!", True, PLAY)
 
         button_x_text_1 = width // 2 - text.get_width() // 2
         button_y_text_1 = height // 2 - text.get_height() // 2
@@ -748,12 +729,12 @@ def start_screen(screen, screen_size):
         button_x_2 = width // 2
         button_y_2 = height // 2 + 80
 
-        pygame.draw.rect(screen, color_button,
+        pygame.draw.rect(screen, BUTTON,
                          (button_x_2 - 100, button_y_2 - 25,
                           200, 50), 0)
 
-        font = pygame.font.Font(None, 40)
-        text = font.render("Рекорды", True, color_button_text)
+        font = pygame.font.SysFont("bahnschrift", 40)
+        text = font.render("Рекорды", True, RECORD)
 
         button_x_text_2 = width // 2 - text.get_width() // 2
         button_y_text_2 = height // 2 + 80 - text.get_height() // 2
