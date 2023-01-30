@@ -94,7 +94,7 @@ class Board:
                         elif cnt == '4':
                             color = (0, 0, 102)
                         else:
-                            color = (0,0,0)
+                            color = (0, 0, 0)
 
                         font = pygame.font.Font(None, 53)
                         text = font.render(str(self.map[i][j]), True,
@@ -109,6 +109,7 @@ class Board:
                         x, y = (
                             self.left + j * self.cell_size,
                             self.top + i * self.cell_size)
+                        self.map[i][j] = '*'
 
                         bomb = Bomb(x, y)
                         all_sprites.add(bomb)
@@ -838,7 +839,7 @@ def main():
                                                 height, count)
                             bomb = Bomb(None, None, False)
                             bomb.delete()
-
+                            first_move = True
                     if first_move:
                         board.get_click(event.pos, first_move,
                                         True)  # True - открыть клетку
