@@ -755,6 +755,31 @@ def create_empty_map(value):
                 map_file.write("\n")
 
 
+def create_database():
+    with sqlite3.connect("data/database.db") as connect:
+        cursor = connect.cursor()
+
+        sql = """
+        DROP TABLE IF EXISTS board;
+        """
+
+        cursor.execute(sql)
+
+        sql = """
+        CREATE TABLE board (
+            id     INTEGER PRIMARY KEY ASC AUTOINCREMENT
+                           UNIQUE,
+            data   VARCHAR,
+            time   VARCHAR,
+            points INTEGER
+        );
+        """
+
+        cursor.execute(sql)
+
+        connect.commit()
+
+
 def main():
     """Главная функция"""
     global screen, SCREEN_SIZE, first_move, value, count
@@ -810,4 +835,5 @@ def main():
 
 
 if __name__ == "__main__":
+    create_database()
     main()
