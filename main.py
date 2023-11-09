@@ -1,276 +1,233 @@
-from random import choices, choice
-import sys
-import pygame
-import os
+# -*- coding: utf-8 -*-
 import datetime
+import random
 import sqlite3
-from config import *
-from style import *
+import sys
+
+import pygame
+
+import config
+import load
+import style
+
+__all__ = []
 
 
-# Загрузка изображения
-def load_image(name, colorkey=None):
-    fullname = os.path.join('data', name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    if colorkey is not None:
-        if colorkey == -1:
-            colorkey = image.get_at((0, 0))
-        image.set_colorkey(colorkey)
-    return image
+def get_text_color(text):
+    """Определение цвета ячейки"""
+    colors = {
+        "F": style.cell_f,
+        "1": style.cell_1,
+        "2": style.cell_2,
+        "3": style.cell_3,
+        "4": style.cell_4,
+    }
+    return colors.get(text, style.cell_else)
 
 
 class Bomb(pygame.sprite.Sprite):
-    image = pygame.transform.scale(load_image("bomb.jpg", (255, 255, 255)),
-                                   (40, 40))
+    """
+    Класс бомбы, имеет свойство картинки, а так же атрибуты положения
+    """
 
-    def __init__(self, x, y, GOG=True):
+    def __init__(self, x, y):
         super().__init__(all_sprites)
-        if GOG:
-            self.image = Bomb.image
-            self.rect = self.image.get_rect()
-            self.rect.x, self.rect.y = x, y
-
-    def delete(self):
-        all_sprites.remove(all_sprites)
+        global SCREEN_SIZE, value
+        w, h = SCREEN_SIZE
+        size = (w - 100) // value
+        image = pygame.transform.scale(
+            load.load_image("bomb.jpg", (255, 255, 255)),
+            (size, size),
+        )
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = x, y
 
 
 class Board:
-    def __init__(self, screen_size, width, height, count):
+    """
+    Класс поля, отвечает за отображение всего поля, мин, ячеек и тд
+    """
 
-        self.width = width  # Ширина поля
-        self.height = height  # Высота поля
+    def __init__(self, screen_size, value, count):
+        """Магический метод инициализации"""
+        self.value = value
         self.count = count  # Количество мин
 
         w, h = screen_size
 
         self.left = 50
         self.top = 90
-        self.cell_size = (w - 100) // width
+        self.cell_size = (w - 100) // self.value
+        self.font_size = 65 - ((self.value - 8) * 5)
 
-    def set_view(self, left, top, cell_size):
-        self.left = left
-        self.top = top
-        self.cell_size = cell_size
+    @staticmethod
+    def render_lose(screen):
+        """Рисует надпись <Вы проиграли!>"""
+        pygame.draw.rect(screen, style.BUTTON, (265, 10, 185, 70))
+
+        font = pygame.font.SysFont("bahnschrift", 25)
+
+        text = font.render("Вы проиграли!", True, style.TITLE)
+
+        text_x = 357 - text.get_width() // 2
+        text_y = 50 - text.get_height() // 2
+
+        screen.blit(text, (text_x, text_y))
+
+    @staticmethod
+    def render_restart(screen):
+        """Рисует кнопку <Рестарт>"""
+        pygame.draw.rect(screen, style.BUTTON, (50, 10, 185, 70))
+
+        font = pygame.font.SysFont("bahnschrift", 35)
+
+        text = font.render("Рестарт", True, style.TITLE)
+
+        text_x = 142 - text.get_width() // 2
+        text_y = 45 - text.get_height() // 2
+
+        screen.blit(text, (text_x, text_y))
+
+    @staticmethod
+    def draw_cell_rect(screen, cell_rect, flag, col):
+        """Рисует белую ячейку"""
+        border_color = pygame.Color("white")
+        fill_color = pygame.Color(col)
+        border_thickness = 1 if flag else 0
+
+        pygame.draw.rect(screen, border_color, cell_rect, border_thickness)
+        pygame.draw.rect(screen, fill_color, cell_rect.inflate(-2, -2), 0)
 
     def render(self, screen):
+        """Метод, который отображает все поле"""
         for i in range(len(self.map)):
             for j in range(len(self.map[i])):
                 if not self.lose_detect:
-                    GOG = False
-                    if self.map[i][j] != '.' and self.map[i][j] != '*':
-                        GOG = True
-                    if self.map[i][j] == '*':
-                        col = 'black'
-                    elif self.map[i][j] == '.':
-                        col = 'black'
-                    else:
-                        col = 'grey'
-
-                    pygame.draw.rect(screen, pygame.Color("white"), (
-                        self.left + j * self.cell_size,
-                        self.top + i * self.cell_size, self.cell_size,
-                        self.cell_size), 1)
-
-                    pygame.draw.rect(screen, pygame.Color(col), (
-                        self.left + j * self.cell_size + 1,
-                        self.top + i * self.cell_size + 1,
-                        self.cell_size - 2,
-                        self.cell_size - 2),
-                                     0)
-
-                    if GOG:
-                        cnt = str(self.map[i][j])
-                        if cnt == 'F':
-                            color = (102, 51, 0)
-                        elif cnt == '1':
-                            color = (0, 0, 179)
-                        elif cnt == '2':
-                            color = (0, 179, 60)
-                        elif cnt == '3':
-                            color = (179, 36, 0)
-                        elif cnt == '4':
-                            color = (0, 0, 102)
-                        else:
-                            color = (0, 0, 0)
-
-                        font = pygame.font.Font(None, 53)
-                        text = font.render(str(self.map[i][j]), True,
-                                           color)
-                        text_x = self.left + j * self.cell_size + 10
-                        text_y = self.top + i * self.cell_size + 5
-                        screen.blit(text, (text_x, text_y))
+                    self.render_cell(screen, i, j)
                 else:
-                    square = i * self.width + j
-                    if (self.map[i][j] == 'F' and square in self.MINES) or \
-                            self.map[i][j] == '*':
-                        x, y = (
-                            self.left + j * self.cell_size,
-                            self.top + i * self.cell_size)
-                        self.map[i][j] = '*'
-
-                        bomb = Bomb(x, y)
-                        all_sprites.add(bomb)
-
-                        col = 'red'
-                    elif self.map[i][j] == '.':
-                        col = 'black'
-                    else:
-                        col = 'grey'
-
-                    pygame.draw.rect(screen, pygame.Color("white"), (
-                        self.left + j * self.cell_size,
-                        self.top + i * self.cell_size, self.cell_size,
-                        self.cell_size), 1)
-
-                    pygame.draw.rect(screen, pygame.Color(col), (
-                        self.left + j * self.cell_size + 1,
-                        self.top + i * self.cell_size + 1,
-                        self.cell_size - 2,
-                        self.cell_size - 2),
-                                     0)
-                    if self.map[i][j] == '.':
-
-                        font = pygame.font.Font(None, 53)
-                        text = font.render(str(' '), True,
-                                           (255, 0, 0))
-                        text_x = self.left + j * self.cell_size + 10
-                        text_y = self.top + i * self.cell_size + 5
-                        screen.blit(text, (text_x, text_y))
-                    else:
-                        cnt = str(self.map[i][j])
-                        if cnt == 'F':
-                            color = (102, 51, 0)
-                        elif cnt == '1':
-                            color = (0, 0, 179)
-                        elif cnt == '2':
-                            color = (0, 179, 60)
-                        elif cnt == '3':
-                            color = (179, 36, 0)
-                        elif cnt == '4':
-                            color = (0, 0, 102)
-                        else:
-                            color = (0, 0, 0)
-                        font = pygame.font.Font(None, 53)
-                        text = font.render(str(self.map[i][j]), True,
-                                           color)
-                        text_x = self.left + j * self.cell_size + 10
-                        text_y = self.top + i * self.cell_size + 5
-                        screen.blit(text, (text_x, text_y))
-
+                    self.render_end_game(screen, i, j)
                     # <======== Вы проиграли! ========>
-                    pygame.draw.rect(screen, BUTTON, (265, 10, 185, 70))
-
-                    font = pygame.font.SysFont("bahnschrift", 25)
-
-                    text = font.render("Вы проиграли!", True, TITLE)
-
-                    text_x = 357 - text.get_width() // 2
-                    text_y = 50 - text.get_height() // 2
-
-                    screen.blit(text, (text_x, text_y))
+                    self.render_lose(screen)
                     # <======== Вы проиграли! ========>
 
                     # <======== Рестарт ========>
-                    pygame.draw.rect(screen, BUTTON, (50, 10, 185, 70))
-
-                    font = pygame.font.SysFont("bahnschrift", 35)
-
-                    text = font.render("Рестарт", True, TITLE)
-
-                    text_x = 142 - text.get_width() // 2
-                    text_y = 45 - text.get_height() // 2
-
-                    screen.blit(text, (text_x, text_y))
+                    self.render_restart(screen)
                     # <======== Рестарт ========>
 
+    def render_end_game(self, screen, i, j):
+        """Отображения проигрыша"""
+        square = i * self.value + j
+        if (self.map[i][j] == "F" and square in self.MINES) or self.map[i][
+            j
+        ] == "*":
+            x, y = (
+                self.left + j * self.cell_size,
+                self.top + i * self.cell_size,
+            )
+            self.map[i][j] = "*"
 
-def generate_neighbors(square):
-    """ Возвращает клетки соседствующие с square """
-    if square == 0:
-        data = (1, 11, 10)
+            bomb: Bomb = Bomb(x, y)
+            all_sprites.add(bomb)
 
-    elif square == 9:
-        data = (8, 18, 19)
+            col = "red"
+        elif self.map[i][j] == ".":
+            col = "black"
+        else:
+            col = "grey"
 
-    elif square == 90:
-        data = (80, 81, 91)
+        pygame.draw.rect(
+            screen,
+            pygame.Color("white"),
+            (
+                self.left + j * self.cell_size,
+                self.top + i * self.cell_size,
+                self.cell_size,
+                self.cell_size,
+            ),
+            1,
+        )
 
-    elif square == 99:
-        data = (89, 88, 98)
+        pygame.draw.rect(
+            screen,
+            pygame.Color(col),
+            (
+                self.left + j * self.cell_size + 1,
+                self.top + i * self.cell_size + 1,
+                self.cell_size - 2,
+                self.cell_size - 2,
+            ),
+            0,
+        )
+        if self.map[i][j] == ".":
+            font = pygame.font.Font(None, self.font_size)
+            text = font.render(str(" "), True, (255, 0, 0))
+            text_x = self.left + j * self.cell_size + 10
+            text_y = self.top + i * self.cell_size + 5
+            screen.blit(text, (text_x, text_y))
+        else:
+            cnt = str(self.map[i][j])
+            color = get_text_color(cnt)
+            font = pygame.font.Font(None, self.font_size)
+            text = font.render(str(self.map[i][j]), True, color)
+            text_x = self.left + j * self.cell_size + 10
+            text_y = self.top + i * self.cell_size + 5
+            screen.blit(text, (text_x, text_y))
 
-    elif square in (1, 2, 3, 4, 5, 6, 7, 8):
-        data = (
-            square - 1, square - 1 + 10, square + 10, square + 1 + 10,
-            square + 1)
+    def render_cell(self, screen, i, j):
+        """Отображение ячейки"""
+        cell_value = self.map[i][j]
+        flag = cell_value != "." and cell_value != "*"
+        col = "black" if cell_value == "*" or cell_value == "." else "grey"
 
-    elif square in (91, 92, 93, 94, 95, 96, 97, 98):
-        data = (
-            square - 1, square - 1 - 10, square - 10, square + 1 - 10,
-            square + 1)
+        cell_rect = pygame.Rect(
+            self.left + j * self.cell_size,
+            self.top + i * self.cell_size,
+            self.cell_size,
+            self.cell_size,
+        )
 
-    elif square in (10, 20, 30, 40, 50, 60, 70, 80):
-        data = (
-            square - 10, square + 1 - 10, square + 1, square + 1 + 10,
-            square + 10)
+        self.draw_cell_rect(screen, cell_rect, flag, col)
 
-    elif square in (19, 29, 39, 49, 59, 69, 79, 89):
-        data = (
-            square - 10, square - 10 - 1, square - 1, square - 1 + 10,
-            square + 10)
+        if flag:
+            self.render_cell_text(screen, i, j)
 
-    else:
-        data = (
-            square - 1 - 10, square - 10, square + 1 - 10, square + 1,
-            square + 1 + 10, square + 10, square - 1 + 10, square - 1)
+    def render_cell_text(self, screen, i, j):
+        """Отображение текста ячейки"""
+        cell_value = str(self.map[i][j])
+        color = get_text_color(cell_value)
 
-    return data
+        font = pygame.font.Font(None, self.font_size)
+        text_rendered = font.render(cell_value, True, color)
 
+        text_x = self.left + j * self.cell_size + 10
+        text_y = self.top + i * self.cell_size + 5
 
-def load_image(name, color_key=None):
-    fullname = os.path.join('data', name)
-    try:
-        image = pygame.image.load(fullname)
-    except pygame.error as message:
-        print('Не удаётся загрузить:', name)
-        raise SystemExit(message)
-    image = image.convert_alpha()
-    if color_key is not None:
-        if color_key == -1:
-            color_key = image.get_at((0, 0))
-        image.set_colorkey(color_key)
-    return image
-
-
-def load_level():
-    filename = "data/map.txt"
-    with open(filename, 'r') as mapFile:
-        level_map = [line.strip() for line in mapFile]
-    # print(level_map)
-    max_width = max(map(len, level_map))
-    return list(map(lambda x: list(x.ljust(max_width, '.')), level_map))
+        screen.blit(text_rendered, (text_x, text_y))
 
 
 class Minesweeper(Board):
+    """Главный класс сапера"""
 
-    def __init__(self, screen, screen_size, width, height, count):
-        super().__init__(screen_size, width, height, count)
+    def __init__(self, screen, screen_size, value, count):
+        """Метод инициализации"""
+        super().__init__(screen_size, value, count)
 
         # <============ СЧЕТ ============>
         self.now = datetime.datetime.now()
         self.start_time = datetime.datetime.timestamp(self.now)
         self.finish_time = None
         self.points = None
-        self.data = ':'.join(
-            reversed(str(self.now).split()[0].replace('-', ':').split(':')))
-        self.time = str(self.now).split()[1].split('.')[0]
+        self.data = ":".join(
+            reversed(str(self.now).split()[0].replace("-", ":").split(":")),
+        )
+        self.time = str(self.now).split()[1].split(".")[0]
         # <============ СЧЕТ ============>
 
-        self.map = load_level()  # Загружаем карту
+        self.map = load.load_level()
         self.screen = screen
 
+        self.value = value
         self.restart = False
 
         self.lose_detect = False
@@ -281,143 +238,151 @@ class Minesweeper(Board):
 
         self.lst = []
 
-        l_board = [i for i in range(height * width)]
+        l_board = [i for i in range(value * value)]
 
-        self.MINES = choices(l_board, k=count)  # Мины
-
-        # print(self.MINES)
+        self.MINES = random.sample(l_board, k=count)  # Мины
         for mine in self.MINES:
-            i, j = mine // height, mine % width
+            i, j = mine // value, mine % value
             self.lst.append(mine)
-            # print(f"i-> {i} | j-> {j}")
-            self.map[i][j] = '*'
+            self.map[i][j] = "*"
+
+    def generate_neighbors(self, square):
+        row, col = square % self.value, square // self.value
+        neighbors = []
+        for r in range(max(0, row - 1), min(self.value - 1, row + 1) + 1):
+            for c in range(max(0, col - 1), min(self.value - 1, col + 1) + 1):
+                if r == row and c == col:
+                    continue
+                neighbors.append(self.cell_to_square((r, c)))
+        return neighbors
 
     def cell_to_square(self, cell):
+        """Перевод клетки (i, j) -> square"""
         i, j = cell
-        square = j * self.width + i
+        square = j * self.value + i
         return square
 
-    def get_click(self, mouse_pos, first_move, gog):
+    def get_click(self, mouse_pos, first_move, flag):
+        """Определение клика"""
         cell = self.get_cell(mouse_pos)
-        if gog:
+        if flag:
             self.open_cell(cell, first_move)
         else:
             self.open_flag(cell)
 
     def get_cell(self, mouse_pos):
-        if mouse_pos[0] < self.left or mouse_pos[
-            0] > self.left + self.cell_size * len(
-            self.map[0]) or mouse_pos[1] \
-                < self.top or mouse_pos[1] > self.top + self.cell_size * len(
-            self.map):
+        """Определение ячейки по координатам клика"""
+        if (
+                mouse_pos[0] < self.left
+                or mouse_pos[0] > self.left + self.cell_size * len(self.map[0])
+                or mouse_pos[1] < self.top
+                or mouse_pos[1] > self.top + self.cell_size * len(self.map)
+        ):
             return None
         return (
             (mouse_pos[0] - self.left) // self.cell_size,
-            (mouse_pos[1] - self.top) // self.cell_size)
+            (mouse_pos[1] - self.top) // self.cell_size,
+        )
 
     def open_flag(self, cell):
+        """Открыть флаг"""
         if not self.lose_detect and not self.win_detect:
-
             j, i = cell
             square = self.cell_to_square(cell)
 
-            if self.map[i][j] == '.' or self.map[i][j] == '*':
-                self.map[i][j] = 'F'
-            elif self.map[i][j] == 'F':
+            if self.map[i][j] == "." or self.map[i][j] == "*":
+                self.map[i][j] = "F"
+            elif self.map[i][j] == "F":
                 if square in self.MINES:
-                    self.map[i][j] = '*'
+                    self.map[i][j] = "*"
                 else:
-                    self.map[i][j] = '.'
-            GOG = self.check_win()
-            if GOG:
+                    self.map[i][j] = "."
+            flag = self.check_win()
+            if flag:
                 self.win_detect = True
                 self.win()
 
     def check_win(self):
-        cnt = sum([i.count('.') for i in self.map])
-        GOG = cnt == 0
-        return GOG
+        """Проверка на победу"""
+        cnt = sum([i.count(".") for i in self.map])
+        return True if not cnt else False
 
     def open_cell(self, cell, first_move=False):
-        if not self.lose_detect and not self.win_detect:
-            try:
-                j, i = cell
-                square = self.cell_to_square(cell)
-                if first_move:
-                    if square in self.MINES:
-                        self.MINES.remove(square)
-                        self.lst.remove(square)
+        """Открытие ячейки"""
+        if cell is None or self.lose_detect or self.win_detect:
+            return
 
-                        i, j = square // self.height, square % self.width
+        j, i = cell
+        square = self.cell_to_square(cell)
 
-                        cnt = self.get_cnt_mines(square)
+        if first_move and square in self.MINES:
+            self.handle_first_move(square)
 
-                        if cnt:
-                            self.map[i][j] = cnt
-                        else:
-                            self.map[i][j] = ' '
+        if square in self.MINES:
+            self.lose_detect = True
+        elif square not in self.lst:
+            self.lst.append(square)
+            cnt = self.get_cnt_mines(square)
+            if cnt:
+                if self.map[i][j] == "." or self.map[i][j] == "f":
+                    self.map[i][j] = cnt
+            else:
+                self.map[i][j] = " "
+                self.recursively_open_neighbors(square)
 
-                        l_board = [i for i in range(self.height * self.width)]
-                        while True:
-                            mine = choice(l_board)
-                            # print(f"mine -> {mine}")
-                            if mine not in self.MINES and mine != square:
-                                i, j = mine // self.height, mine % self.width
-                                self.map[i][j] = '*'
-                                self.MINES.append(mine)
-                                self.lst.append(mine)
-                                break
-                # print(self.lst)
-                if square in self.MINES:
-                    self.lose()
-                if square not in self.lst:
-                    self.lst.append(square)
-                    cnt = self.get_cnt_mines(square)
-                    # print(cell, square, cnt)
-                    if cnt:
-                        if self.map[i][j] == '.' or self.map[i][j] == 'f':
-                            self.map[i][j] = cnt
-                        else:
-                            # print('ПРОМАХ', i, j)
-                            pass
-                        GOG = self.check_win()
-                        if GOG:
-                            self.win_detect = True
-                            self.win()
-                    else:
-                        self.map[i][j] = ' '
-                        data = generate_neighbors(square)
-                        sys.setrecursionlimit(3000)
-                        for square in data:
-                            cell = (square % self.height, square // self.width)
-                            self.open_cell(cell)
-                            # print(f"рекурсия ___ {cell}, {i} {j}")
-                            # time.sleep(0.02)
-                        GOG = self.check_win()
-                        if GOG:
-                            self.win_detect = True
-                            self.win()
-            except Exception as e:
-                pass
+            flag = self.check_win()
+            if flag:
+                self.win_detect = True
+                self.win()
 
-    def lose(self):
-        # print('Ты проиграл, ты попал на мину!')
-        self.lose_detect = True
+    def handle_first_move(self, square):
+        """Открытие, когда это первый ход"""
+        self.MINES.remove(square)
+        self.lst.remove(square)
+
+        i, j = square // self.value, square % self.value
+        cnt = self.get_cnt_mines(square)
+
+        if cnt:
+            self.map[i][j] = cnt
+        else:
+            self.map[i][j] = " "
+
+        mb_mines = [
+            i
+            for i in range(self.value * self.value)
+            if i not in self.MINES and i != square
+        ]
+
+        mine = random.choice(mb_mines)
+        i, j = mine // self.value, mine % self.value
+        self.map[i][j] = "*"
+        self.MINES.append(mine)
+        self.lst.append(mine)
+
+    def recursively_open_neighbors(self, square):
+        """Открытие рекурсией по соседям"""
+        data = self.generate_neighbors(square)
+        sys.setrecursionlimit(3000)
+
+        for neighbor_square in data:
+            cell = (
+                neighbor_square % self.value,
+                neighbor_square // self.value,
+            )
+            self.open_cell(cell)
 
     def win(self):
-        # print('Ты выйграл!')
+        """Победа"""
         self.now = datetime.datetime.now()
         self.finish_time = datetime.datetime.timestamp(self.now)
         self.points = str(int(self.finish_time - self.start_time))
-
-        # print(f"data-> {self.data} | time-> {self.time} | points-> {self.points}")
-
         self.win_detect = True
         win_screen(self.data, self.time, self.points)
 
     def get_cnt_mines(self, square):
-        data = generate_neighbors(square)
-        # print(f"info-> {data, self.MINES}")
+        """Вывести количество мин вокруг клетки"""
+        data = self.generate_neighbors(square)
         cnt = 0
         for i in data:
             if i in self.MINES:
@@ -426,402 +391,381 @@ class Minesweeper(Board):
 
 
 def win_screen(data, time, points):
-    try:
-        global first_move
-        first_move = True
-        connect = sqlite3.connect('data/database.db')
-        cursor = connect.cursor()
+    """Экран победы"""
+    global first_move, screen, SCREEN_SIZE
+    first_move = True
+    connect = sqlite3.connect("data/database.db")
+    cursor = connect.cursor()
 
-        data = str(data)
-        time = str(time)
-        points = str(points)
+    width, height = SCREEN_SIZE
 
-        global screen, screen_size
-        width, height = screen_size
+    fon = pygame.transform.scale(
+        load.load_image("background.png"),
+        SCREEN_SIZE,
+    )
+    screen.blit(fon, (0, 0))
 
-        fon = pygame.transform.scale(load_image('background.png'), screen_size)
-        screen.blit(fon, (0, 0))
+    font = pygame.font.SysFont("bahnschrift", 50)
+    text = font.render("Ты выиграл!", True, style.TITLE)
 
+    text_x = width // 2 - text.get_width() // 2
+    text_y = height // 8 + 20 - text.get_height() // 2
+
+    screen.blit(text, (text_x, text_y))
+
+    # ============================
+
+    # <====== Главная рамка ======>
+    pygame.draw.rect(
+        screen,
+        style.BUTTON,
+        (50, 170, 400, 210),
+        5,
+    )
+    # <====== Главная рамка ======>
+
+    # <====== Горизонтальные линии ======>
+    for i in range(2):
+        pygame.draw.line(
+            screen,
+            style.BUTTON,
+            (50, 240 + 70 * i),
+            (450, 240 + 70 * i),
+            5,
+        )
+    # <====== Горизонтальные линии ======>
+
+    # <====== 1 Вертикальная линия ======>
+    pygame.draw.line(
+        screen,
+        style.BUTTON,
+        (220, 170),
+        (220, 380),
+        5,
+    )
+    # <====== 1 Вертикальная линия ======>
+
+    columns = [
+        ("Дата", data),
+        ("Время", time),
+        ("Счет", points),
+    ]
+
+    for index, column in enumerate(columns):
+        # <====== Надпись ======>
         font = pygame.font.SysFont("bahnschrift", 50)
-        text = font.render("Ты выйграл!", True, TITLE)
-
-        text_x = width // 2 - text.get_width() // 2
-        text_y = height // 8 + 20 - text.get_height() // 2
-
-        screen.blit(text, (text_x, text_y))
-
-        # ============================
-
-        # <====== Главная рамка ======>
-        pygame.draw.rect(screen, BUTTON, (50, 170, 400, 210), 5)
-        # <====== Главная рамка ======>
-
-        # <====== 1 Горизонтал. линия ======>
-        pygame.draw.line(screen, BUTTON, (50, 240), (450, 240), 5)
-        # <====== 1 Горизонтал. линия ======>
-
-        # <====== 2 Горизонтал. линия ======>
-        pygame.draw.line(screen, BUTTON, (50, 310), (450, 310), 5)
-        # <====== 2 Горизонтал. линия ======>
-
-        # <====== 1 Вертикал. линия ======>
-        pygame.draw.line(screen, BUTTON, (220, 170), (220, 380), 5)
-        # <====== 1 Вертикал. линия ======>
-
-        # <====== Дата ======>
-        font = pygame.font.SysFont("bahnschrift", 50)
-        text = font.render("Дата", True, TABLE_NAMES)
+        text = font.render(column[0], True, style.TABLE_NAMES)
 
         text_x = 130 - text.get_width() // 2
-        text_y = 210 - text.get_height() // 2
+        text_y = 210 + 70 * index - text.get_height() // 2
 
         screen.blit(text, (text_x, text_y))
-        # <====== Дата ======>
+        # <====== Надпись ======>
 
-        # <====== Время ======>
-        font = pygame.font.SysFont("bahnschrift", 45)
-        text = font.render("Время", True, TABLE_NAMES)
-
-        text_x = 130 - text.get_width() // 2
-        text_y = 280 - text.get_height() // 2
-
-        screen.blit(text, (text_x, text_y))
-        # <====== Время ======>
-
-        # <====== Счет ======>
-        font = pygame.font.SysFont("bahnschrift", 50)
-        text = font.render("Счет", True, TABLE_NAMES)
-
-        text_x = 130 - text.get_width() // 2
-        text_y = 340 - text.get_height() // 2
-
-        screen.blit(text, (text_x, text_y))
-        # <====== Счет ======>
-
-        # <====== Главное меню ======>
-        pygame.draw.rect(screen, BUTTON, (100, 450, 300, 50))
-
+        # <====== Пользователь ======>
         font = pygame.font.SysFont("bahnschrift", 35)
 
-        text = font.render("Главное меню", True, PLAY)
-
-        text_x = 250 - text.get_width() // 2
-        text_y = 475 - text.get_height() // 2
-
-        screen.blit(text, (text_x, text_y))
-        # <====== Главное меню ======>
-
-        # <====== Свое Дата ======>
-        font = pygame.font.SysFont("bahnschrift", 35)
-
-        text = font.render(data, True, TABLE_VALUES)
+        text = font.render(column[1], True, style.TABLE_VALUES)
 
         text_x = 335 - text.get_width() // 2
-        text_y = 210 - text.get_height() // 2
+        text_y = 210 + 70 * index - text.get_height() // 2
 
         screen.blit(text, (text_x, text_y))
-        # <====== Свое Дата ======>
+        # <====== Пользователь ======>
 
-        # <====== Свое Время ======>
-        font = pygame.font.SysFont("bahnschrift", 35)
+    # <====== Главное меню ======>
+    pygame.draw.rect(screen, style.BUTTON, (100, 450, 300, 50))
 
-        text = font.render(time, True, TABLE_VALUES)
+    font = pygame.font.SysFont("bahnschrift", 35)
 
-        text_x = 335 - text.get_width() // 2
-        text_y = 280 - text.get_height() // 2
+    text = font.render("Главное меню", True, style.PLAY)
 
-        screen.blit(text, (text_x, text_y))
-        # <====== Свое Время ======>
+    text_x = 250 - text.get_width() // 2
+    text_y = 475 - text.get_height() // 2
 
-        # <====== Свое Cчет ======>
-        font = pygame.font.SysFont("bahnschrift", 35)
+    screen.blit(text, (text_x, text_y))
+    # <====== Главное меню ======>
 
-        text = font.render(points, True, TABLE_VALUES)
+    cursor.execute(
+        """
+    INSERT INTO board(data, time, points) VALUES(?, ?, ?)
+    """,
+        (data, time, points),
+    )
 
-        text_x = 340 - text.get_width() // 2
-        text_y = 340 - text.get_height() // 2
+    connect.commit()
+    cursor.close()
 
-        screen.blit(text, (text_x, text_y))
-        # <====== Свое Cчет ======>
-
-        cursor.execute("""
-        INSERT INTO board(data, time, points) VALUES(?, ?, ?)
-        """, (data, time, points))
-
-        connect.commit()
-        cursor.close()
-
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    terminate()
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    pos = event.pos
-                    x, y = pos
-                    if 100 < x < 400 and 450 < y < 500:
-                        main()
-            pygame.display.flip()
-    except Exception as e:
-        pass
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = event.pos
+                x, y = pos
+                if 100 < x < 400 and 450 < y < 500:
+                    main()
+        pygame.display.flip()
 
 
 def lider_board(screen, screen_size):
-    try:
+    """Экран лидерборд"""
+    connect = sqlite3.connect("data/database.db")
+    cursor = connect.cursor()
 
-        connect = sqlite3.connect('data/database.db')
-        cursor = connect.cursor()
+    width, height = screen_size
 
-        width, height = screen_size
+    fon = pygame.transform.scale(
+        load.load_image("background.png"),
+        screen_size,
+    )
+    screen.blit(fon, (0, 0))
 
-        fon = pygame.transform.scale(load_image('background.png'), screen_size)
-        screen.blit(fon, (0, 0))
+    # <====== Главное меню ======>
+    pygame.draw.rect(screen, style.BUTTON, (100, 450, 300, 50))
 
-        # <====== Главное меню ======>
-        pygame.draw.rect(screen, BUTTON, (100, 450, 300, 50))
+    font = pygame.font.SysFont("bahnschrift", 30)
 
-        font = pygame.font.SysFont("bahnschrift", 30)
+    text = font.render("Главное меню", True, style.PLAY)
 
-        text = font.render("Главное меню", True, PLAY)
+    text_x = 250 - text.get_width() // 2
+    text_y = 475 - text.get_height() // 2
 
-        text_x = 250 - text.get_width() // 2
-        text_y = 475 - text.get_height() // 2
+    screen.blit(text, (text_x, text_y))
+    # <====== Главное меню ======>
 
-        screen.blit(text, (text_x, text_y))
-        # <====== Главное меню ======>
+    font = pygame.font.SysFont("bahnschrift", 50)
+    text = font.render("Таблица Рекордов", True, style.TITLE)
 
-        font = pygame.font.SysFont("bahnschrift", 50)
-        # print(pygame.font.get_fonts())
-        # print(pygame.font.match_font('arial'))
-        text = font.render("Таблица Рекордов", True, TITLE)
+    text_x = width // 2 - text.get_width() // 2
+    text_y = height // 7 - text.get_height() // 2
 
-        text_x = width // 2 - text.get_width() // 2
-        text_y = height // 7 - text.get_height() // 2
+    screen.blit(text, (text_x, text_y))
 
-        screen.blit(text, (text_x, text_y))
+    # <====== Главная рамка ======>
+    pygame.draw.rect(screen, style.BUTTON, (50, 120, 400, 300), 5)
+    # <====== Главная рамка ======>
 
-        # ============================
+    # <====== Горизонтальные линии ======>
+    for i in range(3):
+        pygame.draw.line(
+            screen,
+            style.BUTTON,
+            (50, 195 + 75 * i),
+            (450, 195 + 75 * i),
+            5,
+        )
+    # <====== Горизонтальные линии ======>
 
-        # <====== Главная рамка ======>
-        pygame.draw.rect(screen, BUTTON, (50, 120, 400, 300), 5)
-        # <====== Главная рамка ======>
+    # <====== Вертикальные линии ======>
+    for i in range(2):
+        pygame.draw.line(
+            screen,
+            style.BUTTON,
+            (183 + 133 * i, 120),
+            (183 + 133 * i, 420),
+            5,
+        )
+    # <====== Вертикальные линии ======>
 
-        # <====== 1 Горизонтал. линия ======>
-        pygame.draw.line(screen, BUTTON, (50, 195), (450, 195), 5)
-        # <====== 1 Горизонтал. линия ======>
-
-        # <====== 2 Горизонтал. линия ======>
-        pygame.draw.line(screen, BUTTON, (50, 270), (450, 270), 5)
-        # <====== 2 Горизонтал. линия ======>
-
-        # <====== 3 Горизонтал. линия ======>
-        pygame.draw.line(screen, BUTTON, (50, 345), (450, 345), 5)
-        # <====== 3 Горизонтал. линия ======>
-
-        # <====== 1 Вертикал. линия ======>
-        pygame.draw.line(screen, BUTTON, (183, 120), (183, 420), 5)
-        # <====== 1 Вертикал. линия ======>
-
-        # <====== 2 Вертикал. линия ======>
-        pygame.draw.line(screen, BUTTON, (316, 120), (316, 420), 5)
-        # <====== 2 Вертикал. линия ======>
-
-        # <====== 1 Горизонтал. линия Дата ======>
+    # <====== Надписи ======>
+    columns = ["Дата", "Время", "Счет"]
+    for index, column in enumerate(columns):
         font = pygame.font.SysFont("bahnschrift", 40)
-        text = font.render("Дата", True, TABLE_NAMES)
+        text = font.render(column, True, style.TABLE_NAMES)
+
+        text_x = 115 + 135 * index - text.get_width() // 2
+        text_y = 160 - text.get_height() // 2
+
+        screen.blit(text, (text_x, text_y))
+    # <====== Надписи ======>
+
+    result = [i for i in cursor.execute("""SELECT * from board""").fetchall()]
+    result.sort(key=lambda i: i[-1])
+    for place in range(len(result[:3])):
+        id, data, time, points = result[place]
+
+        # <======== Дата ========>
+        font = pygame.font.SysFont("bahnschrift", 25)
+
+        text = font.render(data, True, style.TABLE_VALUES)
 
         text_x = 115 - text.get_width() // 2
-        text_y = 160 - text.get_height() // 2
+        text_y = (235 - text.get_height() // 2) + 75 * place
 
         screen.blit(text, (text_x, text_y))
-        # <====== 1 Горизонтал. линия Дата ======>
+        # <======== Дата ========>
 
-        # <====== 1 Горизонтал. линия Время ======>
-        font = pygame.font.SysFont("bahnschrift", 40)
+        # <======== Время ========>
+        font = pygame.font.SysFont("bahnschrift", 30)
 
-        text = font.render("Время", True, TABLE_NAMES)
+        text = font.render(time, True, style.TABLE_VALUES)
 
         text_x = 250 - text.get_width() // 2
-        text_y = 160 - text.get_height() // 2
+        text_y = (235 - text.get_height() // 2) + 75 * place
 
         screen.blit(text, (text_x, text_y))
-        # <====== 1 Горизонтал. линия Время ======>
+        # <======== Время ========>
 
-        # <====== 1 Горизонтал. линия Счет ======>
-        font = pygame.font.SysFont("bahnschrift", 40)
+        # <======== Счет ========>
+        font = pygame.font.SysFont("bahnschrift", 30)
 
-        text = font.render("Счет", True, TABLE_NAMES)
+        text = font.render(str(points), True, style.TABLE_VALUES)
 
-        text_x = 385 - text.get_width() // 2
-        text_y = 160 - text.get_height() // 2
+        text_x = 380 - text.get_width() // 2
+        text_y = (235 - text.get_height() // 2) + 75 * place
 
         screen.blit(text, (text_x, text_y))
-        # <====== 1 Горизонтал. линия Счет ======>
+        # <======== Счет ========>
 
-        result = [i for i in
-                  cursor.execute("""SELECT * from board""").fetchall()]
-        result.sort(key=lambda i: i[-1])
-        lenght = len(result)
-        place = 0
-        while lenght:
-            if place == 3:
-                break
-
-            id, data, time, points = result[place]
-
-            # <======== Дата ========>
-            font = pygame.font.SysFont("bahnschrift", 25)
-
-            text = font.render(data, True, TABLE_VALUES)
-
-            text_x = 115 - text.get_width() // 2
-            text_y = (235 - text.get_height() // 2) + 75 * place
-
-            screen.blit(text, (text_x, text_y))
-            # <======== Дата ========>
-
-            # <======== Время ========>
-            font = pygame.font.SysFont("bahnschrift", 30)
-
-            text = font.render(time, True, TABLE_VALUES)
-
-            text_x = 250 - text.get_width() // 2
-            text_y = (235 - text.get_height() // 2) + 75 * place
-
-            screen.blit(text, (text_x, text_y))
-            # <======== Время ========>
-
-            # <======== Счет ========>
-            font = pygame.font.SysFont("bahnschrift", 30)
-
-            text = font.render(str(points), True, TABLE_VALUES)
-
-            text_x = 380 - text.get_width() // 2
-            text_y = (235 - text.get_height() // 2) + 75 * place
-
-            screen.blit(text, (text_x, text_y))
-            # <======== Счет ========>
-
-            lenght -= 1
-            place += 1
-
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    terminate()
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    pos = event.pos
-                    x, y = pos
-                    if 100 < x < 400 and 450 < y < 500:
-                        main()
-            pygame.display.flip()
-    except Exception as e:
-        pass
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = event.pos
+                x, y = pos
+                if 100 < x < 400 and 450 < y < 500:
+                    main()
+        pygame.display.flip()
 
 
 def start_screen(screen, screen_size):
-    try:
-        global first_move
-        first_move = True
-        width, height = screen_size
+    """Главный экран"""
+    global first_move
+    first_move = True
+    width, height = screen_size
 
-        fon = pygame.transform.scale(load_image('background.png'), screen_size)
-        screen.blit(fon, (0, 0))
+    fon = pygame.transform.scale(
+        load.load_image("background.png"),
+        screen_size,
+    )
+    screen.blit(fon, (0, 0))
 
-        font = pygame.font.SysFont("bahnschrift", 60)
-        text = font.render("Сапер", True, TITLE)
+    font = pygame.font.SysFont("bahnschrift", 60)
+    text = font.render("Сапер", True, style.TITLE)
 
-        text_x = width // 2 - text.get_width() // 2
-        text_y = height // 3 - text.get_height() // 2
+    text_x = width // 2 - text.get_width() // 2
+    text_y = height // 3 - text.get_height() // 2
 
-        screen.blit(text, (text_x, text_y))
+    screen.blit(text, (text_x, text_y))
 
-        # ============================
+    # ============================
 
-        button_x_1 = width // 2
-        button_y_1 = height // 2
+    button_x_1 = width // 2
+    button_y_1 = height // 2
 
-        pygame.draw.rect(screen, BUTTON,
-                         (button_x_1 - 100, button_y_1 - 25,
-                          200, 50), 0)
+    pygame.draw.rect(
+        screen,
+        style.BUTTON,
+        (button_x_1 - 100, button_y_1 - 25, 200, 50),
+        0,
+    )
 
-        font = pygame.font.SysFont("bahnschrift", 40)
-        text = font.render("Играть!", True, PLAY)
+    font = pygame.font.SysFont("bahnschrift", 40)
+    text = font.render("Играть!", True, style.PLAY)
 
-        button_x_text_1 = width // 2 - text.get_width() // 2
-        button_y_text_1 = height // 2 - text.get_height() // 2
+    button_x_text_1 = width // 2 - text.get_width() // 2
+    button_y_text_1 = height // 2 - text.get_height() // 2
 
-        screen.blit(text, (button_x_text_1, button_y_text_1))
+    screen.blit(text, (button_x_text_1, button_y_text_1))
 
-        # ============================
+    # ============================
 
-        button_x_2 = width // 2
-        button_y_2 = height // 2 + 80
+    button_x_2 = width // 2
+    button_y_2 = height // 2 + 80
 
-        pygame.draw.rect(screen, BUTTON,
-                         (button_x_2 - 100, button_y_2 - 25,
-                          200, 50), 0)
+    pygame.draw.rect(
+        screen,
+        style.BUTTON,
+        (button_x_2 - 100, button_y_2 - 25, 200, 50),
+        0,
+    )
 
-        font = pygame.font.SysFont("bahnschrift", 40)
-        text = font.render("Рекорды", True, RECORD)
+    font = pygame.font.SysFont("bahnschrift", 40)
+    text = font.render("Рекорды", True, style.RECORD)
 
-        button_x_text_2 = width // 2 - text.get_width() // 2
-        button_y_text_2 = height // 2 + 80 - text.get_height() // 2
+    button_x_text_2 = width // 2 - text.get_width() // 2
+    button_y_text_2 = height // 2 + 80 - text.get_height() // 2
 
-        screen.blit(text, (button_x_text_2, button_y_text_2))
+    screen.blit(text, (button_x_text_2, button_y_text_2))
 
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    terminate()
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    pos = event.pos
-                    x, y = pos
-                    if button_x_1 - 100 < x < button_x_1 + 100 and button_y_1 - 25 < y < button_y_1 + 25:
-                        return
-                    elif button_x_2 - 100 < x < button_x_2 + 100 and button_y_2 - 25 < y < button_y_2 + 25:
-                        bomb = Bomb(None, None, False)
-                        bomb.delete()
-                        lider_board(screen, screen_size)
-            pygame.display.flip()
-    except Exception as e:
-        pass
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                pos = event.pos
+                x, y = pos
+                if (
+                        button_x_1 - 100 < x < button_x_1 + 100
+                        and button_y_1 - 25 < y < button_y_1 + 25
+                ):
+                    return
+                elif (
+                        button_x_2 - 100 < x < button_x_2 + 100
+                        and button_y_2 - 25 < y < button_y_2 + 25
+                ):
+                    clear_all_sprites()
+                    lider_board(screen, screen_size)
+        pygame.display.flip()
 
 
 def terminate():
+    """Выход из приложения"""
     pygame.quit()
-    sys.exit
+    sys.exit()
 
 
-all_sprites = pygame.sprite.Group()
+def clear_all_sprites():
+    """Очистить все спрайты, очистить бомбы"""
+    all_sprites.remove(all_sprites)
 
-screen, screen_size = None, None
+
+# Глобальные переменные
 first_move = True
+
+# Инициализация Pygame
+pygame.init()
+
+# Создание группы спрайтов
+all_sprites: pygame.sprite.Group = pygame.sprite.Group()
+
+# Инициализация экрана и его размеров
+SCREEN_SIZE = (500, 500)
+screen = pygame.display.set_mode(SCREEN_SIZE)
+pygame.display.set_caption("Сапер")
+
+value, count = (
+    config.value,
+    config.count_mines,
+)
+if (not (8 <= value <= 15)) or (not (value ** 2 > count)):
+    print("Invalid parameters in config")
+    sys.exit()
+
+
+def create_empty_map(value):
+    """Создать пустое поле"""
+    with open("data/map.txt", "w") as map_file:
+        for i in range(value):
+            string = "." * value
+            map_file.write(string)
+            if i < value - 1:
+                map_file.write("\n")
 
 
 def main():
-    global screen, screen_size, first_move
+    """Главная функция"""
+    global screen, SCREEN_SIZE, first_move, value, count
 
     pygame.init()
 
-    width, height, count = width_map, height_map, count_mines
-    screen_size = (500, 500)
+    create_empty_map(value)
 
-    map = open('data/map.txt', 'w')
-    map.truncate()
-    for i in range(1, height + 1):
-        string = '.' * width
-        map.write(string)
-        if i != height:
-            map.write('\n')
-    map.close()
+    start_screen(screen, SCREEN_SIZE)
 
-    screen = pygame.display.set_mode(screen_size)
-    screen.fill((0, 0, 0))
-    pygame.display.set_caption('Сапер')
-
-    start_screen(screen, screen_size)
-
-    board = Minesweeper(screen, screen_size, width, height, count)
+    board = Minesweeper(screen, SCREEN_SIZE, value, count)
     running = True
 
     while running:
@@ -831,24 +775,32 @@ def main():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
                     if board.lose_detect:
-                        # 50, 10, 185, 70
                         x, y = event.pos
                         if 50 < x < 235 and 10 < y < 80:
-                            start_screen(screen, screen_size)
-                            board = Minesweeper(screen, screen_size, width,
-                                                height, count)
-                            bomb = Bomb(None, None, False)
-                            bomb.delete()
+                            start_screen(screen, SCREEN_SIZE)
+                            board = Minesweeper(
+                                screen,
+                                SCREEN_SIZE,
+                                value,
+                                count,
+                            )
+                            clear_all_sprites()
                             first_move = True
                     if first_move:
-                        board.get_click(event.pos, first_move,
-                                        True)  # True - открыть клетку
+                        board.get_click(
+                            event.pos,
+                            first_move,
+                            True,
+                        )
                         first_move = False
                     else:
                         board.get_click(event.pos, first_move, True)
                 elif event.button == 3:
-                    board.get_click(event.pos, False,
-                                    False)  # False - поставить флаг
+                    board.get_click(
+                        event.pos,
+                        False,
+                        False,
+                    )
 
         screen.fill((0, 0, 0))
         board.render(screen)
@@ -857,5 +809,5 @@ def main():
     pygame.quit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

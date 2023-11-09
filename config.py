@@ -1,2 +1,2 @@
-count_mines = 10
-width_map = height_map = 10
+count_mines = 99
+value = 10
